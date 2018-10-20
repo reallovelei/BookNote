@@ -10,8 +10,9 @@
 ## 第二章
 
 ### 简单动态字符串 SDS 
+```
 
-      
+```
 free
 len
 buf
@@ -33,5 +34,5 @@ buf
 
     
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNjM2MTcwNzg2XX0=
+eyJoaXN0b3J5IjpbLTEwNDk1OTQ5MjBdfQ==
 -->
