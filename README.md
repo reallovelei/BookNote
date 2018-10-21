@@ -1,17 +1,32 @@
+目录
+
+[TOC]
+
+# todo
+
+- [x] redis写第一篇
+- [ ] redis录视频
+- [ ] proxy翻译
+
+
 # BookNote
 自己的读书笔记
 
 [模式](#模式列表)
-k  
 
+## 后端类
 
-// my
-## 模式列表
+### 模式列表
 Active Record
 Application Controller
 Association Table Mapping
-// doudou
-ddd
 
-mmmmmmm
+### redis
+
+## 大前端
+
+### proxy
+
+
+
 
