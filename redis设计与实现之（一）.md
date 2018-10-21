@@ -46,11 +46,11 @@ struct sdshdr {
  2. 如果大小 >1M   如5M 则多分配1M即 5+1M。
 
 ## 内存回收策略
-惰性回收：刚才我们说了 buf由小变大，sds会自动判断大小，如果不足会申请内存，那么如果由大变小呢（如:原大小64M 现在只存），sds会
+惰性回收：刚才我们说了 buf由小变大，sds会自动判断大小，如果不足会申请内存，那么如果由大变小呢（如:原大小64M 现在只存2个字节了），sds会变成1M大小的内存呢？还是维持原有大小64M呢？ 答案是维持原有大小，只是会改变free的值。
     
     
 
     
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTM0OTM5OTM1OSwtNTc1MjE0ODQ2XX0=
+eyJoaXN0b3J5IjpbLTExOTg0MDU3OTYsLTU3NTIxNDg0Nl19
 -->
