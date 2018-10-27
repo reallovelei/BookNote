@@ -1,5 +1,6 @@
 各位朋友大家好：
-  首次见面 先自我介绍一下，我是一名十年工作经验的码农，目前就职于。（如果大家有需要可以找内推啊）
+    首次见面 先自我介绍一下，：
+	我是一名十年工作经验的码农，目前就职于。（如果大家有需要可以
       
 今天我们来聊聊《Redis设计与实现》这本书。提到Redis相信很多码农都很熟悉。Redis是一个key-value存储系统，和Memcache类似，它支持存储的value类型相对更多，包括string、list、set、zset和hash 以及订阅/发布等功能。但这本书并不是介绍怎么使用Redis的，而是对Redis的实现原理进行了介绍，力图展示其核心数据结构以及关键的算法思想，并让我们能够快速、有效的了解Redis的内部构造以及其运作机制。敲黑板划重点了，**如果只是对Redis实现原理感兴趣，但是又不想深入研究Redis源代码，那么读这本书就够了。**（这是书上说的，不是我说的啊。我觉得时间充裕的还是可以看完对应章节，看下对应部分代码，毕竟Redis源码并不算多。有问题大家可以留言讨论）。
 
@@ -43,5 +44,6 @@ struct sdshdr {
 
     
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTExOTg0MDU3OTZdfQ==
+eyJoaXN0b3J5IjpbLTE3MTA2MDU2NjUsLTExOTg0MDU3OTZdfQ
+==
 -->
