@@ -45,5 +45,73 @@ set 陷阱接受4个参数：
 3. value 赋予这个属性的值
 4. receiver 操作在哪个对象上发生，receiver就是哪个对象，通常就是proxy。
 
+```
+let target = {
+    name: "target"
+};
+
+let proxy = new Proxy(target, {
+    set(trapTarget, key, value, receiver) {
+        // ignore existing properties so as not to affect them
+        if (!trapTarget.hasOwnProperty(key)) {
+            if (isNaN(value)) {
+                throw new TypeError("Property must be a number.");
+            }
+        }
+        console.table(Reflect)
+        // add the property
+        return Reflect.set(trapTarget, key, value, receiver);
+    }
+});
+
+// adding a new property
+proxy.count = 1;   // 这时trapTarget就是target，key等于count，value 等于1， receiver 是 proxy本身
+console.log(proxy.count);       // 1
+console.log(target.count);      // 1
+
+// you can assign to name because it exists on target already
+proxy.name = "proxy";
+console.log(proxy.name);        // "proxy"
+console.log(target.name);       // "proxy"
+
+// throws an error
+proxy.anotherName = "proxy";
+```
+- new Proxy 里，传入的第二个参数即为handler，这里定义了set方法，对应的内部操作是Reflect.set()，同时也是默认操作。
+- set proxy trap 和 Reflect.set() 接收同样的四个参数
+- Reflect.set() 返回一个boolean值标识set操作是否成功，因此，如果set了属性，trap会返回true，否则返回false。
+
+### 用get陷阱来验证对象结构（object shape）
+ 
+ > object shape: 一个对象上可用的属性和方法的集合。
+
+ 与很多其他语言不通，js奇葩的一点在于，获取某个不存在的属性时，不会报错，而是会返回undefined。在大型项目中，经常由于拼写错误等原因造成这种情况。那么，如何用Proxy的get方法来避免这一点呢？
+
+使用Object.preventExtensions(), Object.seal(), Object.freeze() 等方法，可以强迫一个对象保持它原有的属性和方法。现在要使每次试图获取对象上不存在的属性时抛出错误。在读取属性时，会走proxy。.get()接收3个参数。
+
+1. trapTarget
+2. key: 属性的键。一个字符串或者symbol。
+3. receiver
+
+比起上面的set，少了一个value。Reflect.get()方法同样接收这3个参数，并返回属性的默认值。
+```
+let proxy = new Proxy({}, {
+    get(trapTartet, key, receiver) {
+        if(!(key in receiver)) {
+            throw new TypeError(`property ${key} doesn't exist`)
+        }
+        return Reflect.get(trapTarget, key, recevier)
+    }
+})
+
+// adding a property still works
+proxy.name = "proxy";
+console.log(proxy.name);            // "proxy"
+
+// nonexistent properties throw an error
+console.log(proxy.nme);             // throws error
+```
+
+
 参考文献：
 1. [understanding es6: proxies and reflections](https://github.com/nzakas/understandinges6/blob/master/manuscript/12-Proxies-and-Reflection.md)
