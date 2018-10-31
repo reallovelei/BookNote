@@ -18,7 +18,17 @@ static int checkStringLength(client *c, long long size) {
     return C_OK;
 }
 ```
-OH，这哥们居然限制了512M的大小。
+O Ho，这哥们居然限制了512M的大小。[官网上也是这么说的]
+但是好奇心驱使着我继续发问，哪里用到这个函数呢 发现只在2个命令里用到 一个是append  一个是setrange.
+原本我以为是应该是 sdsnew 创建一个新的sds里会检测
+```C
+/* Create a new sds string starting from a null terminated C string. */
+sds sdsnew(const char *init) {
+    size_t initlen = (init == NULL) ? 0 : strlen(init);
+    return sdsnewlen(init, initlen);
+}
+```
+于是乎我就一脸懵逼的继续去看代码。我开始后悔提出这个问题了。
 <hr />
 
 ### 双端链表
