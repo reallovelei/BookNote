@@ -6,8 +6,19 @@
 
 从这里可以看到，sds的默认存储最大值是1MB，但它实际上是可以通过不断追加长度，多分配新的内存空间的。因此，理论上，内存中有多少可用空间，redis就可以存储多大的字符。
 
-你看SDS里有一个len字段 可以表示buf已经使用的字节数。那么这个len的类型是int的。 所以看一下len的最大可以是多少。是不是答案就浮出水面了呢！~
+你看SDS里有一个len字段 可以表示buf已经使用的字节数。那么这个len的类型是int的。 所以看一下len的最大值可以是多少。是不是答案就浮出水面了呢！~
 
+BUT,  在我翻阅redis源码的时候发现 src/t_string.c 文件里有一个检查字符串长度的函数。
+```C
+static int checkStringLength(client *c, long long size) {
+    if (size > 512*1024*1024) {
+        addReplyError(c,"string exceeds maximum allowed size (512MB)");
+        return C_ERR;
+    }
+    return C_OK;
+}
+```
+OH，这哥们居然限制了512M的大小。
 <hr />
 
 ### 双端链表
