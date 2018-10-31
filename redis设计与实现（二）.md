@@ -20,7 +20,7 @@ static int checkStringLength(client *c, long long size) {
 ```
 O Ho，这哥们居然限制了512M的大小。[官网上也是这么说的]
 但是好奇心驱使着我继续发问，哪里用到这个函数呢 发现只在2个命令里用到 一个是append  一个是setrange.
-原本我以为是应该是 sdsnew 创建一个新的sds里会检测
+原本我以为是应该是 sdsnew 创建一个新的sds里会检测长度，但是却让我失望了。
 ```C
 /* Create a new sds string starting from a null terminated C string. */
 sds sdsnew(const char *init) {
@@ -29,6 +29,25 @@ sds sdsnew(const char *init) {
 }
 ```
 于是乎我就一脸懵逼的继续去看代码。我开始后悔提出这个问题了。
+当我在src/module.c 中看到如下代码我以为我发现了。但仿佛高兴的太早了我貌似没有找到RM_StringTruncate调用这个函数的地方。
+```C
+/* If the string is open for writing and is of string type, resize it, padding
+ * with zero bytes if the new length is greater than the old one.
+ *
+ * After this call, RM_StringDMA() must be called again to continue
+ * DMA access with the new pointer.
+ *
+ * The function returns REDISMODULE_OK on success, and REDISMODULE_ERR on
+ * error, that is, the key is not open for writing, is not a string
+ * or resizing for more than 512 MB is requested.
+ *
+ * If the key is empty, a string key is created with the new string value
+ * unless the new length value requested is zero. */
+int RM_StringTruncate(RedisModuleKey *key, size_t newlen) {
+    if (!(key->mode & REDISMODULE_WRITE)) return REDISMODULE_ERR;
+    if (key->value && key->value->type != OBJ_STRING) return REDISMODULE_ERR;
+    if (newlen > 512*1024*1024) return REDISMODULE_ERR;
+```
 <hr />
 
 ### 双端链表
