@@ -5,7 +5,7 @@
 # todo
 
 - [x] redis写第一篇
-- [ ] redis录视频
+- [x] redis录视频
 - [ ] proxy翻译
 
 
