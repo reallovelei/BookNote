@@ -18,7 +18,7 @@ static int checkStringLength(client *c, long long size) {
     return C_OK;
 }
 ```
-O Ho，这哥们居然限制了512M的大小。[官网上也是这么说的]
+O Ho，这哥们居然限制了512M的大小。[官网上也是这么说的](https://redis.io/topics/data-types)
 但是好奇心驱使着我继续发问，哪里用到这个函数呢 发现只在2个命令里用到 一个是append  一个是setrange.
 原本我以为是应该是 sdsnew 创建一个新的sds里会检测长度，但是却让我失望了。
 ```C
@@ -28,26 +28,32 @@ sds sdsnew(const char *init) {
     return sdsnewlen(init, initlen);
 }
 ```
-于是乎我就一脸懵逼的继续去看代码。我开始后悔提出这个问题了。
-当我在src/module.c 中看到如下代码我以为我发现了。但仿佛高兴的太早了我貌似没有找到RM_StringTruncate调用这个函数的地方。
-```C
-/* If the string is open for writing and is of string type, resize it, padding
- * with zero bytes if the new length is greater than the old one.
- *
- * After this call, RM_StringDMA() must be called again to continue
- * DMA access with the new pointer.
- *
- * The function returns REDISMODULE_OK on success, and REDISMODULE_ERR on
- * error, that is, the key is not open for writing, is not a string
- * or resizing for more than 512 MB is requested.
- *
- * If the key is empty, a string key is created with the new string value
- * unless the new length value requested is zero. */
-int RM_StringTruncate(RedisModuleKey *key, size_t newlen) {
-    if (!(key->mode & REDISMODULE_WRITE)) return REDISMODULE_ERR;
-    if (key->value && key->value->type != OBJ_STRING) return REDISMODULE_ERR;
-    if (newlen > 512*1024*1024) return REDISMODULE_ERR;
+于是乎我就一脸懵逼的继续去看代码。我承认我暂时找不到答案了。
+我去做实验，首先我先验证了一下 append  和 setrange2个命令。
+我生成了一个512M的文本，
+然后直接set发现可以set. 没毛病。
+开始测试：
 ```
+127.0.0.1:6379> append key a
+(error) ERR string exceeds maximum allowed size (512MB)
+127.0.0.1:6379> setrange key 536870912 a
+(error) ERR string exceeds maximum allowed size (512MB)
+```
+可以看到 这2个命令和代码里的错误提示是一致的。
+那么set 一个大于512m的字符串呢。我用了PHP 和 golang2个语言发现都不行。
+php报这个错：Redis::set(): send of 8192 bytes failed with errno=32 Broken pipe in xxxx
+golang报这个错:redis set failed: write tcp 127.0.0.1:55045->127.0.0.1:6379: write: broken pipe.
+这两个错都是管道相关的错误。我在Redis源码没有找到相关错误。我以为是client的错误。
+于是我想直接用命令行 redis-cli 还是一样报错。 
+```
+/redis-cli -h 127.0.0.1 < /Users/Ben/work/test/redisexp/512 
+Error: Protocol wrong type for socket
+```
+**至此我的问题还是没有得到有效解决。望各位大神指点一二。**
+
+
+/* If the string is open for writing and is of string type, resize it, padding
+
 <hr />
 
 ### 双端链表
