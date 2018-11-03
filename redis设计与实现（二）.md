@@ -52,8 +52,6 @@ Error: Protocol wrong type for socket
 **至此我的问题还是没有得到有效解决。望各位大神指点一二。**
 
 
-/* If the string is open for writing and is of string type, resize it, padding
-
 <hr />
 
 ### 双端链表
