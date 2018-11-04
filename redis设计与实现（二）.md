@@ -1,6 +1,6 @@
 ### 上期问题
 
-上一讲的最后，大路提出了一个问题，那就是sds一共可以存储多大的字节呢？
+上一期的最后，大路提出了一个问题，那就是sds一共可以存储多大的字节呢？
 
 > 在目前版本的 Redis 中， SDS_MAX_PREALLOC 的值为 1024 * 1024 ， 也就是说， 当大小小于 1MB 的字符串执行追加操作时， sdsMakeRoomFor 就为它们分配多于所需大小一倍的空间； 当字符串的大小大于 1MB ， 那么 sdsMakeRoomFor 就为它们额外多分配 1MB 的空间。
 
@@ -18,7 +18,7 @@ static int checkStringLength(client *c, long long size) {
     return C_OK;
 }
 ```
-O Ho，这哥们居然限制了512M的大小。[官网上也是这么说的](https://redis.io/topics/data-types)
+O Ho，redis作责居然限制了512M的大小。[官网上也是这么说的](https://redis.io/topics/data-types)
 但是好奇心驱使着我继续发问，哪里用到这个函数呢 发现只在2个命令里用到 一个是append  一个是setrange.
 原本我以为是应该是 sdsnew 创建一个新的sds里会检测长度，但是却让我失望了。
 ```C
@@ -33,7 +33,7 @@ sds sdsnew(const char *init) {
 我生成了一个512M的文本，
 然后直接set发现可以set. 没毛病。
 开始测试：
-```
+```C
 127.0.0.1:6379> append key a
 (error) ERR string exceeds maximum allowed size (512MB)
 127.0.0.1:6379> setrange key 536870912 a
@@ -41,8 +41,14 @@ sds sdsnew(const char *init) {
 ```
 可以看到 这2个命令和代码里的错误提示是一致的。
 那么set 一个大于512m的字符串呢。我用了PHP 和 golang2个语言发现都不行。
-php报这个错：Redis::set(): send of 8192 bytes failed with errno=32 Broken pipe in xxxx
-golang报这个错:redis set failed: write tcp 127.0.0.1:55045->127.0.0.1:6379: write: broken pipe.
+php报这个错：
+```
+Redis::set(): send of 8192 bytes failed with errno=32 Broken pipe in xxxx
+```
+golang报这个错:
+```
+redis set failed: write tcp 127.0.0.1:55045->127.0.0.1:6379: write: broken pipe.
+```
 这两个错都是管道相关的错误。我在Redis源码没有找到相关错误。我以为是client的错误。
 于是我想直接用命令行 redis-cli 还是一样报错。 
 ```
@@ -56,17 +62,24 @@ Error: Protocol wrong type for socket
 
 ### 双端链表
 
-今天我们来一起学习redis的另一种基本的内置数据结构：双端链表。它的用处可多了，redis的list列表结构，其底层实现之一就是双端链表。此外，事务、订阅/发送等功能，都离不开它。
+今天我们来一起学习redis的另一种基本的内置数据结构：双端链表。提到链表，它的用处可多了，redis的list列表结构，其底层实现之一就是双端链表。此外，事务、订阅/发送等功能，都离不开它。
 
 > 数组和链表的区别？
+我们我们知道遍历数组和链表的时间复杂度是O(n)。
+但是实际使用来说，数组的速度是要优于链表的，
+1.数组元素的类型统一
+2.数组的内存空间是一块连续空间，而链表的内存空间是散列的。
+插入和删除的操作比较：
+1.在数组中间插入（或删除）一个元素，那么这个元素后的所有元素的内存地址都要往后（前）移动（数组的内存地址是连续的），操作最后一个元素时才比较快， 而链表不需要改变内存的地址，只需要修改节点的指针即可（包括指针指向，节点值）。
+2.因为定义数组时所占用的空间大小都是固定的，如果存储满了，无法扩展，只能新建一个更大空间的数组。链表的扩展性较好，
 
 > 那另一种底层实现是什么呢？
 > 也是链表，叫做压缩列表。其实，因为压缩列表占用的内存更小，在创建新列表的时候，会优先使用压缩列表。在之后的章节中，我们还会再进一步介绍它。
 
 双端链表由listNode 和 List 两个数据结构组成。
 
-- listNode代表节点。包括三个指针，prev，前一个节点，next，下一个节点，value，它存储的值。因此，可以双向遍历。
-- list则是双端链表本身。定义了表头表尾指针，因此，对表头和表尾的插入的复杂度都是O(1)。lpush, rpush 都很便捷。还定义了链表的长度，len属性，所以求长度的复杂度也是O(1)。此外还定义了一些操作函数。
+- listNode代表节点。包括三个指针，prev，前一个节点，next，下一个节点，value，它存储的值。因此，可以双向遍历,其实这个结构体本身就完成双向链表了。但是redis为了操作方便又为我们封装了list结构体。
+- list结构体为链表提供了表头/表尾指针，因此，对表头和表尾的插入的复杂度都是O(1)。lpush, rpush 都很便捷。还定义了链表的长度，len属性，所以求长度的复杂度也是O(1)。此外还定义了一些操作函数。
 ```c
 typedef struct listNode {
     struct listNode *prev;
@@ -89,7 +102,7 @@ typedef struct list {
 
 } list;
 ```
-**注意， listNode 的 value 属性的类型是 void * ，说明这个双端链表对节点所保存的值的类型不做限制。**
+**注意， listNode 的 value 属性的类型是 void * ，说明这个双端链表对节点所保存的值的类型不做限制。(这也是一种多态的体现)**
 
 > 一共有多少个节点？
 > 你仔细读一下代码啊。unsigned long 代表 32位，4个字节，数字范围在0 -- 2^32-1
@@ -123,3 +136,5 @@ typedef struct listIter {
 *感觉这里说迭代不如说遍历来得顺。迭代和遍历有区别吗？？？*
 
 *是不是每一期来个小节比较好？？？*
+
+总结一下：链表特性:1.双端，2.无环，3.带表头和表尾指针，4.带链表长度计数器，5.多态
