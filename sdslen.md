@@ -22,7 +22,8 @@ protocol type err
 
 
 
-
-
+我在继续去代码里寻找答案，发现loadconfig的时候有
 而是根据redis.conf里的proto-max-bulk-len  
+
+redis 默认设置了512M的大小, 但是我们可以根据配置文件里的参数进行调整。我觉得那个setrange 和append判断的地方其实也应用这个配置变量来判断。  
 
