@@ -147,7 +147,7 @@ window.addEventListener('pagehide', (event) => {
 - beforeunload: 和`unload`事件有同样的问题，会组织浏览器在`page navigation cache`中缓存页面。*仅当提示用户还有未保存的变化时调用，并且在保存后立即移除*。
 
 正确操作：
-```
+```js
 const beforeUnloadListener = (event) => {
   event.preventDefault();
   return event.returnValue = 'Are you sure you want to exit?';
@@ -164,7 +164,7 @@ onAllChangesSaved(() => {
 });
 ```
 
-*`pagelifecycle.js`库已经提供了`addUnsavedChanges()`和`removeUnsavedChanges()`方法*
+*[`PageLifecycle.js`](https://github.com/GoogleChromeLabs/page-lifecycle)库已经提供了`addUnsavedChanges()`和`removeUnsavedChanges()`方法*
 
 ### FAQs
 1. 我的页面要在`hidden`时仍然工作，怎么阻止它被`frozen`或者`discarded`呢（比如音乐类APP）？
@@ -178,7 +178,7 @@ onAllChangesSaved(() => {
 
 2. 什么是`page navigation cache`（页面导航缓存）？
 
-这是一个通用名词，用来描述浏览器对页面导航的优化，让前进后退按钮更加快捷。`webkit`把它叫做`page cache`，火狐则成为`Back-Forwards Cache`。当导航离开时这些浏览器会冻结当前页面以节约cpu和电量，因此在前进后退再进入这个页面的时候，可以重新`resume`。添加`beforeunload`和`unload`事件监听器都会阻止浏览器所做的优化。
+这是一个通用名词，用来描述浏览器对页面导航的优化，让前进后退按钮更加快捷。`webkit`把它叫做`page cache`，火狐则将其称之为`Back-Forwards Cache`。当导航离开时这些浏览器会冻结当前页面以节约cpu和电量，因此在前进后退再进入这个页面的时候，可以重新`resume`。添加`beforeunload`和`unload`事件监听器都会阻止浏览器所做的优化。
 
 3. 为什么没有提到`laod`/`DOMContentLoaded`事件呢？
 
@@ -190,7 +190,7 @@ onAllChangesSaved(() => {
 未来会在`IDBTransaction`加入`commit()`方法，保证开发者可以执行不需要回调的**只写型**事务。也就是说，如果不需要读，`commit`方法可以在任务队列被暂停前完成。
 目前，开发者还有这两种选择：
 - 使用`session storage`，这是同步的，页面被丢弃也会持久化。
-- 用`service worker`写入`IndexedDB`。可以在`freeze`/`pagehide`事件监听器上通过`postMessage()`给`service worker`发送数据，让后者来完成。但当存在内存压力的时候，不建议使用后者。
+- 用`service worker`写入`IndexedDB`。可以在`freeze`/`pagehide`事件监听器上通过`postMessage()`给`service worker`发送数据，让后者来完成。但当内存压力较大的时候，不建议使用后者。
 
 ### 测试你的app的`frozen`和`discarded`状态
 
@@ -204,7 +204,7 @@ onAllChangesSaved(() => {
 
 另外，对浏览器而言，越多的开发者开始应用新的页面周期API，冻结和丢弃页面也会变得更安全可靠，从而节约内存，cpu，电量和网络资源。
 
-最后，如果不想记住和手写这么多API，可以尝试`pagelifecycle.js`这个库。
+最后，如果不想记住和手写这么多API，可以尝试[PageLifecycle.js](https://github.com/GoogleChromeLabs/page-lifecycle)这个库。
 
 
 

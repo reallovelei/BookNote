@@ -4,7 +4,7 @@
 
 > 在目前版本的 Redis 中， SDS_MAX_PREALLOC 的值为 1024 * 1024 ， 也就是说， 当大小小于 1MB 的字符串执行追加操作时， sdsMakeRoomFor 就为它们分配多于所需大小一倍的空间； 当字符串的大小大于 1MB ， 那么 sdsMakeRoomFor 就为它们额外多分配 1MB 的空间。
 
-你看SDS里有一个len字段 可以表示buf已经使用的字节数。那么这个len的类型是int的。 所以看一下 int 可以存多大的值。是不是答案就浮出水面了呢！~
+你看SDS里有一个len字段 可以表示buf已经使用的字节数。那么这个len的类型是int的。 所以看一下 int 可以存多大的值。是不是答案就浮出水面了呢！~~
 > int 一般是四个字节 也就是说sds里string的长度 2^32 -1.
 
 BUT,  在我翻阅redis源码的时候发现 src/t_string.c 文件里有一个检查字符串长度的函数。
