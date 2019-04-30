@@ -1,0 +1,185 @@
+
+上一期的最后大路提了一个问题：redis最大存储多长字符串？
+在上一期中，我们说到书上是这样介绍SDS 这个结构体的。
+```
+struct sdshdr {
+	int len; //buf数组中已使用字节的数量,等于SDS所保存字符串的长度
+	int free; // buf数组中未使用字节的数量
+	char buf[]; // 字节数组，用于保存字符串
+}
+```
+
+那么在遇到题目 这个问题的时候，我自然会想到用 len的最大值来表示 即 2^32 -1 约2G。
+
+为了验证我的意淫结果是否正确。于是到官网进行查看。
+
+https://redis.io/topics/data-types-intro#strings
+
+ A value can't be bigger than 512 MB. 官方明确给出答案 不能超过512M。好嘛！ 和预期不符。
+
+如果想要揭开真相只能去看代码了。
+
+然而当我翻阅代码发现sds 的数据结构已经发生改变。原来作者为了在小字符串的时候节省内存sds结构体都已经变种了。
+```
+struct __attribute__ ((__packed__)) sdshdr5 {
+    unsigned char flags; /* 3 lsb of type, and 5 msb of string length */
+    char buf[];
+};
+struct __attribute__ ((__packed__)) sdshdr8 {
+    uint8_t len; /* used */
+    uint8_t alloc; /* excluding the header and null terminator */
+    unsigned char flags; /* 3 lsb of type, 5 unused bits */
+    char buf[];
+};
+struct __attribute__ ((__packed__)) sdshdr16 {
+    uint16_t len; /* used */
+    uint16_t alloc; /* excluding the header and null terminator */
+    unsigned char flags; /* 3 lsb of type, 5 unused bits */
+    char buf[];
+};
+struct __attribute__ ((__packed__)) sdshdr32 {
+    uint32_t len; /* used */
+    uint32_t alloc; /* excluding the header and null terminator */
+    unsigned char flags; /* 3 lsb of type, 5 unused bits */
+    char buf[];
+};
+struct __attribute__ ((__packed__)) sdshdr64 {
+    uint64_t len; /* used 已使用的空间；*/
+    uint64_t alloc; /* excluding the header and null terminator 除了空符号和结构头部之外所有的已分配空间，即真正为字符串分配的空间；*/
+    unsigned char flags; /* 3 lsb of type, 5 unused bits 结构类型 */
+    char buf[];  // 存字符串的空间；
+};
+```
+
+可以看到len和buf 并没有变，然而当我翻阅代码发现sds 的数据结构已经发生改变。
+
+然后我在 t_string.c 文件里发现checkStringLength函数。这里在代码里直接写死了如果超过512m 就给客户端报错。
+```C
+static int checkStringLength(client *c, long long size) {
+    if (size > 512*1024*1024) {
+        addReplyError(c,"string exceeds maximum allowed size (512MB)");
+        return C_ERR;
+    }
+    return C_OK;
+}
+```
+到这里我以为这就是官网说最大字符串是512M的证据。话说你这样做真的好吗？  
+
+但是我看了一下，这个函数 只在append和setrange2个命令里调用了。拿append举例：这里的验证是为了避免2个小于512M的字符串拼接后大于512M的情况。  
+
+那么按我的理解新建一个字符串的时候应该是调用sdsnew函数的。  
+```C
+sds sdsnew(const char *init) {
+    size_t initlen = (init == NULL) ? 0 : strlen(init);
+    return sdsnewlen(init, initlen);
+}
+```
+```C
+sds sdsnewlen(const void *init, size_t initlen) {
+    printf("sdsnewlen initlen:%zu\n",initlen);
+    //serverLog(LL_WARNING,"sdsnewlen initlen:%zu",initlen);
+
+    void *sh; 
+    sds s;
+    char type = sdsReqType(initlen);
+    printf("type:%c int type:%d \n", type, type);
+    /* Empty strings are usually created in order to append. Use type 8
+     * since type 5 is not good at this. */
+    if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
+    int hdrlen = sdsHdrSize(type);
+    printf("sdsnewlen hdrlen:%d type:%d  init:%s\n",hdrlen, type, init);
+    unsigned char *fp; /* flags pointer. */
+
+    sh = s_malloc(hdrlen+initlen+1);
+    if (init==SDS_NOINIT) {
+        printf("SDS_NOINIT \n");
+        init = NULL;
+    }
+    else if (!init) {
+
+        printf("SDS_NEW  before memset \n");
+        memset(sh, 0, hdrlen+initlen+1);
+    }
+    if (sh == NULL) return NULL;
+    s = (char*)sh+hdrlen;
+    fp = ((unsigned char*)s)-1;
+    switch(type) {
+        case SDS_TYPE_5: {
+            *fp = type | (initlen << SDS_TYPE_BITS);
+            break;
+        }
+        case SDS_TYPE_8: {
+            SDS_HDR_VAR(8,s);
+            sh->len = initlen;
+            sh->alloc = initlen;
+            *fp = type;
+            break;
+        }
+        case SDS_TYPE_16: {
+            SDS_HDR_VAR(16,s);
+            sh->len = initlen;
+            sh->alloc = initlen;
+            *fp = type;
+            break;
+        }
+        case SDS_TYPE_32: {
+            SDS_HDR_VAR(32,s);
+            sh->len = initlen;
+            sh->alloc = initlen;
+            *fp = type;
+            break;
+        }
+        case SDS_TYPE_64: {
+            SDS_HDR_VAR(64,s);
+            sh->len = initlen;
+            sh->alloc = initlen;
+            *fp = type;
+            break;
+        }
+    }
+    if (initlen && init)
+        memcpy(s, init, initlen);
+    s[initlen] = '\0';
+    return s;
+}
+```
+这里可以看到文章开头提到的几种新的sds结构，会在这里根据长度去分配不同的sds结构。
+```C
+static inline char sdsReqType(size_t string_size) {
+    if (string_size < 1<<5)
+        return SDS_TYPE_5;
+    if (string_size < 1<<8)
+        return SDS_TYPE_8;
+    if (string_size < 1<<16)
+        return SDS_TYPE_16;
+#if (LONG_MAX == LLONG_MAX)
+    if (string_size < 1ll<<32)
+        return SDS_TYPE_32;
+    return SDS_TYPE_64;
+#else
+    return SDS_TYPE_32;
+#endif
+}
+```
+而在sdsnew并没有看到对长度的限制。  
+
+于是乎，我就自己尝试了一把set 了一个大于512M的字符串看看会发生什么。  
+
+结果报了一个这样的错 Protocol error (invalid bulk length) from client: id=4 addr=127.0.0.1:58790 fd=7。根据错误找到对应代码在networking.c的processMultibulkBuffer函数有一段这样的判断  
+```C
+           ok = string2ll(c->querybuf+c->qb_pos+1,newline-(c->querybuf+c->qb_pos+1),&ll);
+            if (!ok || ll < 0 || ll > server.proto_max_bulk_len) {
+                printf("Protocol error: invalid bulk length \n");
+                addReplyError(c,"Protocol error: invalid bulk length");
+                setProtocolError("invalid bulk length",c);
+                return C_ERR;
+            }
+``` 
+
+发现proto_max_bulk_len 这个属性是在config.c的loadServerConfigFromString这个函数 加载配置时赋值的。由于这个函数非常长，对很多配置参数多了校验。就不贴出函数完整代码了。我去redis.conf中找到该配置真的是写的512m，看到这个配置的时候我肯定是毫不犹豫的改成了1024m。重启server。  
+
+继续刚才那个测试。此时我已经可以直接set  513M的字符串了。返回成功了。但是由于作者在代码里写死了append 和 setrange的判断长度，所以 如果对这个513M的value进行setrange 和 append操作都会失败。  
+
+所以这个问题我认为严格的说 答案应该是默认最大字符串是512M。  
+
+有什么问题 欢迎共同讨论。  

@@ -58,7 +58,10 @@ Q&A:
 7. 是怎么分配和管理内存的？
 8. 如何回收内存？为什么说它是惰
 
+
+[enter link description here](https://redis.io/topics/data-types)
     
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbODMzODA0NjI5LC0xMTk4NDA1Nzk2XX0=
+eyJoaXN0b3J5IjpbMjM0NzEzNzQ2LDgzMzgwNDYyOSwtMTE5OD
+QwNTc5Nl19
 -->
