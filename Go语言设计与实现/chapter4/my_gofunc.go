@@ -1,9 +1,12 @@
-package godesign
+package main
 
-func myFunction(a, b int) (int, int) {
-	return a + b, a - b
+import "fmt"
+
+func myFunction(a int) (int, int) {
+	return a + 16, a + 32
 }
 
 func main() {
-	myFunction(66, 77)
+	a, b := myFunction(64)
+	fmt.Println(a, b)
 }
