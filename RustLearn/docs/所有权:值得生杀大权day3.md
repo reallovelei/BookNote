@@ -119,13 +119,13 @@ fn sum(data: Vec<u32>) -> u32 {
 这是因为我们在打印data1的时候，data1实际上已经在上面调用sum(data1)的时候。所有权已经转移(move)到sum()里了。所以后面就不能使用了。
 那怎么才能 在sum()后面使用data1呢？
 我现在知道的方式有2种：
-1. 可以在传到sum()时候的 clone()一下。
+1. 可以在传到sum()时候的 clone()一下。这里会把data1的数据复制一份出来。这样在堆上就有2个互不影响的内存。
 ```rust
 println!("sum of data1: {}", sum(data1.clone()));
 ```
 <img decoding="async" high="350" src="https://github.com/reallovelei/BookNote/blob/master/RustLearn/docs/day3%E6%89%80%E6%9C%89%E6%9D%834.png?raw=true"></img>
 
-2. 传引用,但是sum函数的参数类型也需要修改。
+2. 如果不想多复制一份可以传引用,但是sum函数的参数类型也需要修改。
 ```rust
 println!("sum of data1: {}", sum(&data1));
 
@@ -136,3 +136,5 @@ fn sum(data: &Vec<u32>) -> u32 {
 
 可以看到，**所有权规则，解决了谁真正拥有数据的生杀大权问题，让堆上数据的多重引用不复存在，这是它最大的优势。**
 
+但也会让代码变复杂，如果要避免所有权转移之后不能访问的情况，就需要手动clone(),非常麻烦，效率也不高。
+那Rust会提供哪些方案给我们呢？我们明天接着学习。
